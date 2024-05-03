@@ -2,11 +2,7 @@ import random
 
 class GameStatusUpdate:
     def __init__(self, settings):
-        self.baseline_att_prob = settings.baseline_att_prob
-        self.baseline_def_prob = settings.baseline_def_prob
-        self.baseline_recover_prob = settings.baseline_recover_prob
-        self.baseline_underattack_attack_multiplier = settings.baseline_underattack_attack_multiplier
-        self.baseline_notunderattack_attack_prob = settings.baseline_notunderattack_attack_prob
+        self.settings = settings
 
     def update(self, dynamic_env):
         # refreshing and documenting proposals for each agent:
@@ -42,7 +38,7 @@ class GameStatusUpdate:
                     if eachopponent.is_alive == False:
                         # penalizing the agent for attacking a dead opponent:
                         if eachagent.latest_action == eachopponent.agent_id:
-                            E -= 0.2
+                            E -= self.settings.attack_dead_opponent_penalty
                         continue
 
                 # checking if agent and opponent are the same agent:
@@ -67,10 +63,9 @@ class GameStatusUpdate:
                                 continue
 
                             health_prob = \
-                                self.baseline_att_prob * \
-                                dynamic_env.health_list[eachopponent.agent_id] * \
+                                self.settings.baseline_att_prob * dynamic_env.health_list[eachopponent.agent_id] * \
                                 dynamic_env.agents_list[eachopponent.agent_id].alliance_status * \
-                                self.baseline_def_prob * \
+                                self.settings.baseline_def_prob * \
                                 1 / dynamic_env.health_list[eachagent.agent_id] * \
                                 1 / dynamic_env.agents_list[eachagent.agent_id].alliance_status
 
@@ -111,14 +106,14 @@ class GameStatusUpdate:
                                 continue
 
                             health_prob = \
-                                self.baseline_att_prob * \
+                                self.settings.baseline_att_prob * \
                                 1 / dynamic_env.health_list[eachopponent.agent_id] * \
                                 1 / dynamic_env.agents_list[eachopponent.agent_id].alliance_status * \
-                                self.baseline_recover_prob
+                                self.settings.baseline_recover_prob
 
                         # agent is not being attacked by this opponent:
                         else:
-                            health_prob = self.baseline_recover_prob
+                            health_prob = self.settings.baseline_recover_prob
 
                         # updating the agent's health:
                         if rand_health_prob < health_prob:
@@ -131,7 +126,7 @@ class GameStatusUpdate:
                         # handling animosity:
                         rand_prob_recover = random.uniform(0, 1)
                         anim_level = dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id]
-                        if rand_prob_recover < 0.3:
+                        if rand_prob_recover < self.settings.animosity_decrease_prob:
                             if anim_level > 0:
                                 # decreasing the animosity level
                                 dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id] -= 1
@@ -142,7 +137,7 @@ class GameStatusUpdate:
                         # penalizing the agent for attacking its alliance member:
                         if eachagent.alliance_pair != None:
                             if eachagent.latest_action == eachagent.alliance_pair.agent_id:
-                                E -= 0.3
+                                E -= self.settings.attack_alliance_member_penalty
 
                         # checking if the agent is attacking this particular opponent:
                         if eachagent.latest_action == eachopponent.agent_id:
@@ -161,13 +156,13 @@ class GameStatusUpdate:
                         # agent is being attacked by this opponent:
                         if eachopponent.latest_action == eachagent.agent_id:  # attack of agent by the opponent
                             health_prob = \
-                                self.baseline_att_prob * \
+                                self.settings.baseline_att_prob * \
                                 dynamic_env.health_list[eachopponent.agent_id] * \
                                 dynamic_env.agents_list[eachopponent.agent_id].alliance_status * \
-                                self.baseline_underattack_attack_multiplier
+                                self.settings.baseline_underattack_attack_multiplier
                         # agent is not being attacked by this opponent:
                         else:
-                            health_prob = self.baseline_notunderattack_attack_prob
+                            health_prob = self.settings.baseline_notunderattack_attack_prob
 
                         # updating the agent's health:
                         if rand_health_prob < health_prob:
@@ -184,7 +179,7 @@ class GameStatusUpdate:
                         # handling animosity:
                         rand_prob_attack = random.uniform(0, 1)
                         anim_level = dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id]
-                        if rand_prob_attack < 0.5:
+                        if rand_prob_attack < self.settings.animosity_increase_prob:
                             if anim_level < 2:
                                 # increasing the animosity level
                                 dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id] += 1
@@ -196,7 +191,7 @@ class GameStatusUpdate:
 
                         # penalizing the agent for proposing to an alliance member:
                         if eachagent.latest_action == eachagent.proposal_request + dynamic_env.number_of_agents:
-                            E -= 0.2
+                            E -= self.settings.propose_alliance_member_penalty
 
                         # handling health_transition:
                         rand_health_prob = random.uniform(0, 1)
@@ -205,7 +200,7 @@ class GameStatusUpdate:
                         # agent is being attacked by this opponent:
                         if eachopponent.latest_action == eachagent.agent_id:  # attack of agent by the opponent
                             health_prob = \
-                                self.baseline_att_prob * \
+                                self.settings.baseline_att_prob * \
                                 dynamic_env.health_list[eachopponent.agent_id] * \
                                 dynamic_env.agents_list[eachopponent.agent_id].alliance_status
                         # agent is not being attacked by this opponent:
@@ -229,7 +224,7 @@ class GameStatusUpdate:
                         anim_level = dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id]
                         # checking if the agent proposed alliance to this particular opponent:
                         if eachagent.latest_action == dynamic_env.number_of_agents + eachopponent.agent_id:
-                            if rand_prob_propose < 0.6:
+                            if rand_prob_propose < self.settings.animosity_decrease_prob_alliance_proposal:
                                 if anim_level > 0:
                                     # decreasing the animosity level
                                     dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id] -= 1
@@ -245,7 +240,7 @@ class GameStatusUpdate:
                         # agent is being attacked by this opponent:
                         if eachopponent.latest_action == eachagent.agent_id:
                             health_prob = \
-                                self.baseline_att_prob * \
+                                self.settings.baseline_att_prob * \
                                 dynamic_env.health_list[eachopponent.agent_id] * \
                                 dynamic_env.agents_list[eachopponent.agent_id].alliance_status
                         # agent is not being attacked by this opponent:
@@ -269,7 +264,7 @@ class GameStatusUpdate:
                         anim_level = dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id]
                         # checking if the agent accepted alliance from this particular opponent:
                         if eachagent.latest_action == 2 * dynamic_env.number_of_agents + 2 + eachopponent.agent_id:
-                            if rand_prob_accept < 0.6:
+                            if rand_prob_accept < self.settings.animosity_decrease_prob_alliance_proposal:
                                 if anim_level > 0:
                                     # decreasing the animosity level
                                     dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id] -= 1
@@ -292,9 +287,9 @@ class GameStatusUpdate:
                                 else:
                                     animos = dynamic_env.animosity_table[eachagent.agent_id][eachopponent.agent_id]
                                     if animos != 0:
-                                        anim_alliance_prob = 0.6 / animos
+                                        anim_alliance_prob = self.settings.alliance_prob_with_some_animosity_baseline / animos
                                     else:
-                                        anim_alliance_prob = 0.9
+                                        anim_alliance_prob = self.settings.alliance_prob_with_no_animosity
                                     # alliance formation
                                     if anim_alliance_prob < rand_alliance_prob:
 
@@ -307,8 +302,8 @@ class GameStatusUpdate:
                                         eachopponent.alliance_pair = eachagent
 
                                         # updating the alliance_status for both the agents:
-                                        eachagent.alliance_status = 1.5
-                                        eachopponent.alliance_status = 1.5
+                                        eachagent.alliance_status = 1.5 # standard value
+                                        eachopponent.alliance_status = 1.5 # standard value
 
                                         # printing alliance formations:
                                         # print('alliances formed between agent {} and agent {}'.
@@ -316,7 +311,8 @@ class GameStatusUpdate:
 
             # calculating rewards based on each agent's perspective:
             # refreshing a, b, c:
-            a = b = c = 0
+
+            a = b = c = 0 # a is the agent health, b is the alliance's health, and c is the opponent health
 
             a = eachagent.health_list[eachagent.agent_id]
             if eachagent.alliance_pair != None:
@@ -324,9 +320,9 @@ class GameStatusUpdate:
             else:
                 b = 0
             # finding the id of the opponent this agent chooses to attack, if at all:
-            if eachagent.latest_action < dynamic_env.number_of_agents:
-                if eachagent.health_list[eachagent.latest_action] == True:
-                    c = 1 / eachagent.health_list[eachagent.latest_action]
-                else:
-                    c = 1.3
-            eachagent.current_reward = a + b + c + E
+            if eachagent.latest_action < dynamic_env.number_of_agents \
+                    and eachagent.health_list[eachagent.latest_action] != 0:
+                c = 1/eachagent.health_list[eachagent.latest_action]
+
+            eachagent.current_reward = a + b + c + E # (agent's own health + alliance member's health +
+            # opponent's health + action-based reward)

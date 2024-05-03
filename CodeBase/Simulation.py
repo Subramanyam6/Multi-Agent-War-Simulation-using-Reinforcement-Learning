@@ -43,7 +43,7 @@ class Simulation:
             iterables.append([0, 1, 2])
 
         # appending alliance status to the state:
-        iterables.append([1, 1.5])
+        iterables.append([1, 1.5]) # standard states are 1 and 1.5
 
         # creating the list of states:
         for t in itertools.product(*iterables):
