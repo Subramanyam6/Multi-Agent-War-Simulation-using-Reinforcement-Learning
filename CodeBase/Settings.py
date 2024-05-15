@@ -28,6 +28,8 @@ class Settings:
             float(input('\nPlease input the learning rate (decimal value between 0 and 1):\n'))
 
         self.beta = float(input('\nPlease input the discount factor (decimal value between 0 and 1):\n'))
+
+
         self.baseline_att_prob = 0.25 # this determines the attack strength
         self.baseline_def_prob = 0.66 # this determines the defense strength
         self.baseline_recover_prob = 0.90 # probability with which the agent will recover when no one attacks this agent

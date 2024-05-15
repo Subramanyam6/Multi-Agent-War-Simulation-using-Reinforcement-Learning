@@ -5,26 +5,17 @@ class Agent:
     def __init__(self, agent_id, number_of_agents, health_list):
         self.number_of_agents = number_of_agents
         self.agent_id = agent_id
-
-        self.health_list = list(health_list)
-        self.stable_health_list = list(health_list)
-
+        self.health_list = list(health_list) # this is reset over training loops
+        self.stable_health_list = list(health_list) #this is the actual game-variable
         self.actions = self.create_actions(agent_id, number_of_agents)
         self.latest_action = None
-
         self.alliance_status = 1  # this is 1 by default, will change to 1.5 with alliance formations
         self.stable_alliance_status = 1
-
         self.proposal_request = None
-
         self.alliance_pair = None  # this agent object is updated as per alliance formation/breakups
         self.stable_alliance_pair = None
-
-        self.current_reward = 0
-
         self.is_alive = True
         self.stable_is_alive = True
-
         self.Q_table = []
         self.s_index = None
         self.snext_index = None

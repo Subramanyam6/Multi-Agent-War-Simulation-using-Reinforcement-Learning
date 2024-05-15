@@ -13,23 +13,21 @@ class Simulation:
         # initializing each agent's health based on the input setting
         starting_health_config = self.settings.starting_health_config
         start_health_list = []
-        if starting_health_config == 1:
+        if starting_health_config == 1: #full health
             for eachagent in range(number_of_agents):
                 start_health_list.append(2)
-        elif starting_health_config == 2:
+        elif starting_health_config == 2: #low health
             for eachagent in range(number_of_agents):
                 start_health_list.append(1)
-        elif starting_health_config == 3:
+        elif starting_health_config == 3: #random health
             for eachagent in range(number_of_agents):
                 start_health_list.append(random.randrange(0, 2, 1))
-        elif starting_health_config == 4:
-            counter = 0
+        elif starting_health_config == 4: #half-half
             for eachagent in range(number_of_agents):
-                if counter < number_of_agents / 2 - 1:
+                if eachagent < number_of_agents/2:
                     start_health_list.append(1)
                 else:
                     start_health_list.append(2)
-                counter += 1
 
         self.env = Environment(number_of_agents, start_health_list, self.settings) # initializing the environment
         self.max_iteration = self.settings.max_iteration
@@ -53,7 +51,6 @@ class Simulation:
         self.states_dict = {}
         i = 0
         for eachstate in self.states_list:
-            # print('printing each state: ', eachstate)
             self.states_dict[eachstate] = i
             i += 1
 
@@ -73,17 +70,14 @@ class Simulation:
     def run(self):
         print('\nAgents are now fighting', end="")
         time.sleep(1)
-
         for i in range(4):
             print('.', end="")
             time.sleep(1)
         print('\n')
-
         while self.game_is_on:
             t = 0
             reset = False
             while t < self.max_iteration:
-
                 alive_list = []
 
                 # computing state index for the Q-table:
@@ -93,11 +87,11 @@ class Simulation:
                     s_key = tuple(temp_state)
                     eachagent.s_index = self.states_dict[tuple(s_key)]
 
-                # choosing an action for each agent
+                # choosing an action for each agent:
                 for eachagent in self.env.agents_list:
                     eachagent.choose_action(t)
 
-                # updating the dummy game's state
+                # updating the dummy game's state:
                 self.game_status_update.update(self.env)
 
                 # computing s_next index for the Q-table:

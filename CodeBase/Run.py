@@ -4,8 +4,13 @@ Created on Mon Apr 18 21:27:27 2022
 
 # Updates
 
+2024/03/14
 1. Now structured into modules
 2. Added a settings file
+
+2024/05/15
+1. Made changes for best coding practices
+2. Cleaned up comments
 
 @author: Bala Subramanyam Duggirala
 """
@@ -24,7 +29,6 @@ def main():
         print('.', end = "")
         time.sleep(1)
     print('\n')
-
     initialized_settings = Settings() # mix of user-input + preset. Do check the settings file!
     initializeSimulation = Simulation(initialized_settings) # initializes the simulation with the initialized settings
     initializeSimulation.run() # run the simulation
