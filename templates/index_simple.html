@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent War Simulation (Simple)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        #animation-frames {
+            width: 100%;
+            height: 500px;
+            text-align: center;
+        }
+        #animation-frames img {
+            max-width: 100%;
+            max-height: 100%;
+            display: none;
+        }
+        #animation-frames img.active {
+            display: block;
+        }
+        #animation-controls {
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <div class="container-fluid py-4">
+        <header class="mb-4 text-center">
+            <h1>Multi-Agent War Simulation</h1>
+            <p class="lead">A browser-based visualization of multi-agent reinforcement learning</p>
+        </header>
+
+        <div class="row">
+            <!-- Configuration Panel -->
+            <div class="col-md-3">
+                <div class="card bg-dark border-secondary mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Simulation Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="simulation-form">
+                            <div class="mb-3">
+                                <label for="num-agents" class="form-label">Number of Agents</label>
+                                <input type="number" class="form-control form-control-sm bg-dark text-light" id="num-agents" min="2" max="10" value="6">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="max-iterations" class="form-label">Max Iterations</label>
+                                <input type="number" class="form-control form-control-sm bg-dark text-light" id="max-iterations" min="100" max="2000" value="1000">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Health Configuration</label>
+                                <select class="form-select form-select-sm bg-dark text-light" id="health-config">
+                                    <option value="1">Full Health</option>
+                                    <option value="2">Low Health</option>
+                                    <option value="3">Random Health</option>
+                                    <option value="4">Half-Half</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Animosity Profile</label>
+                                <select class="form-select form-select-sm bg-dark text-light" id="anim-profile">
+                                    <option value="1">High Initial Animosity</option>
+                                    <option value="2">Low Initial Animosity</option>
+                                    <option value="3">Random Initial Animosity</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="alpha" class="form-label">Learning Rate (α)</label>
+                                <input type="range" class="form-range" id="alpha" min="0.1" max="1" step="0.1" value="0.8">
+                                <div class="text-center" id="alpha-value">0.8</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="beta" class="form-label">Discount Factor (β)</label>
+                                <input type="range" class="form-range" id="beta" min="0.1" max="1" step="0.05" value="0.95">
+                                <div class="text-center" id="beta-value">0.95</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Agent Types</label>
+                                <div id="agent-types-container" class="d-flex flex-column gap-2">
+                                    <!-- Agent type selectors will be added here dynamically -->
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="button" id="run-btn" class="btn btn-primary">Run Simulation</button>
+                                <button type="button" id="train-btn" class="btn btn-success">Train & Run</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="card bg-dark border-secondary mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Legend</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-circle bg-warning"></div>
+                            <span class="ms-2">RL Agent</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-circle bg-info"></div>
+                            <span class="ms-2">Heuristic Agent</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-circle bg-light"></div>
+                            <span class="ms-2">Random Agent</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="legend-line bg-orange"></div>
+                            <span class="ms-2">Alliance</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Visualization Panel -->
+            <div class="col-md-9">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Simulation Visualization</h5>
+                        <div>
+                            <span id="status-badge" class="badge bg-secondary">Ready</span>
+                        </div>
+                    </div>
+                    <div class="card-body text-center">
+                        <div id="loading-spinner" class="spinner-border text-light" role="status" style="display: none;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div id="visualization-container">
+                            <div id="static-preview">
+                                <p>Configure your simulation and click "Run Simulation" to start.</p>
+                                <img id="preview-image" src="" alt="Simulation Preview" class="img-fluid" style="display: none;">
+                            </div>
+                            <div id="animation-frames" style="display: none;"></div>
+                            <div id="animation-controls" style="display: none;">
+                                <div class="btn-group">
+                                    <button id="play-pause-btn" class="btn btn-primary">
+                                        <i class="fas fa-play"></i> Play
+                                    </button>
+                                    <button id="prev-frame-btn" class="btn btn-secondary">
+                                        <i class="fas fa-step-backward"></i> Prev
+                                    </button>
+                                    <button id="next-frame-btn" class="btn btn-secondary">
+                                        <i class="fas fa-step-forward"></i> Next
+                                    </button>
+                                </div>
+                                <div class="mt-2">
+                                    <span id="frame-counter">Frame: 0/0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize UI elements
+            const numAgentsInput = document.getElementById('num-agents');
+            const maxIterationsInput = document.getElementById('max-iterations');
+            const healthConfigSelect = document.getElementById('health-config');
+            const animProfileSelect = document.getElementById('anim-profile');
+            const alphaInput = document.getElementById('alpha');
+            const betaInput = document.getElementById('beta');
+            const alphaValueDisplay = document.getElementById('alpha-value');
+            const betaValueDisplay = document.getElementById('beta-value');
+            const agentTypesContainer = document.getElementById('agent-types-container');
+            const runButton = document.getElementById('run-btn');
+            const trainButton = document.getElementById('train-btn');
+            const statusBadge = document.getElementById('status-badge');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const staticPreview = document.getElementById('static-preview');
+            const previewImage = document.getElementById('preview-image');
+            const animationFrames = document.getElementById('animation-frames');
+            const animationControls = document.getElementById('animation-controls');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const prevFrameBtn = document.getElementById('prev-frame-btn');
+            const nextFrameBtn = document.getElementById('next-frame-btn');
+            const frameCounter = document.getElementById('frame-counter');
+            
+            // Animation variables
+            let frames = [];
+            let currentFrame = 0;
+            let isPlaying = false;
+            let animationInterval = null;
+            
+            // Update alpha and beta value displays when sliders change
+            alphaInput.addEventListener('input', function() {
+                alphaValueDisplay.textContent = this.value;
+            });
+            
+            betaInput.addEventListener('input', function() {
+                betaValueDisplay.textContent = this.value;
+            });
+            
+            // Update agent type selectors when number of agents changes
+            numAgentsInput.addEventListener('change', updateAgentTypeSelectors);
+            
+            // Initialize agent type selectors
+            updateAgentTypeSelectors();
+            
+            // Generate preview image on page load
+            generatePreview();
+            
+            // Run simulation button click handler
+            runButton.addEventListener('click', function() {
+                runSimulation(false);
+            });
+            
+            // Train and run button click handler
+            trainButton.addEventListener('click', function() {
+                runSimulation(true);
+            });
+            
+            // Play/pause button click handler
+            playPauseBtn.addEventListener('click', function() {
+                togglePlayPause();
+            });
+            
+            // Previous frame button click handler
+            prevFrameBtn.addEventListener('click', function() {
+                showPreviousFrame();
+            });
+            
+            // Next frame button click handler
+            nextFrameBtn.addEventListener('click', function() {
+                showNextFrame();
+            });
+            
+            /**
+             * Updates the agent type selectors based on the number of agents
+             */
+            function updateAgentTypeSelectors() {
+                const numAgents = parseInt(numAgentsInput.value);
+                agentTypesContainer.innerHTML = '';
+                
+                // Default agent types from Settings.py
+                const defaultAgentTypes = ["RL", "Random", "RL", "Random", "Random", "Random"];
+                
+                for (let i = 0; i < numAgents; i++) {
+                    const agentTypeSelector = document.createElement('div');
+                    agentTypeSelector.className = 'agent-type-selector';
+                    
+                    const label = document.createElement('label');
+                    label.textContent = `Agent ${i}:`;
+                    label.htmlFor = `agent-type-${i}`;
+                    
+                    const select = document.createElement('select');
+                    select.className = 'form-select form-select-sm bg-dark text-light';
+                    select.id = `agent-type-${i}`;
+                    
+                    const options = [
+                        { value: 'RL', text: 'RL' },
+                        { value: 'Heuristic', text: 'Heuristic' },
+                        { value: 'Random', text: 'Random' }
+                    ];
+                    
+                    options.forEach(option => {
+                        const optionElement = document.createElement('option');
+                        optionElement.value = option.value;
+                        optionElement.textContent = option.text;
+                        select.appendChild(optionElement);
+                    });
+                    
+                    // Set default agent type
+                    if (i < defaultAgentTypes.length) {
+                        select.value = defaultAgentTypes[i];
+                    } else {
+                        select.value = 'Random';
+                    }
+                    
+                    agentTypeSelector.appendChild(label);
+                    agentTypeSelector.appendChild(select);
+                    agentTypesContainer.appendChild(agentTypeSelector);
+                }
+            }
+            
+            /**
+             * Generates a preview image of the simulation
+             */
+            function generatePreview() {
+                statusBadge.textContent = 'Generating Preview';
+                statusBadge.className = 'badge bg-info';
+                loadingSpinner.style.display = 'block';
+                
+                // Get current settings
+                const settings = getSimulationSettings();
+                
+                // Send request to generate static image
+                fetch('/static_image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(settings)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Display preview image
+                    previewImage.src = data.image;
+                    previewImage.style.display = 'block';
+                    staticPreview.querySelector('p').style.display = 'none';
+                    
+                    statusBadge.textContent = 'Ready';
+                    statusBadge.className = 'badge bg-success';
+                    loadingSpinner.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error generating preview:', error);
+                    statusBadge.textContent = 'Error';
+                    statusBadge.className = 'badge bg-danger';
+                    loadingSpinner.style.display = 'none';
+                });
+            }
+            
+            /**
+             * Runs the simulation with current settings
+             * @param {boolean} withTraining - Whether to train agents before running
+             */
+            function runSimulation(withTraining) {
+                // Update UI
+                statusBadge.textContent = withTraining ? 'Training' : 'Running';
+                statusBadge.className = 'badge bg-primary';
+                loadingSpinner.style.display = 'block';
+                staticPreview.style.display = 'none';
+                animationFrames.style.display = 'none';
+                animationControls.style.display = 'none';
+                
+                // Reset animation state
+                stopAnimation();
+                frames = [];
+                currentFrame = 0;
+                animationFrames.innerHTML = '';
+                
+                // Get current settings
+                const settings = getSimulationSettings();
+                
+                // Send request to run simulation
+                const endpoint = withTraining ? '/train_and_run' : '/run_simulation';
+                
+                fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(settings)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Store frames
+                    frames = data.frames;
+                    
+                    // Create image elements for each frame
+                    frames.forEach((frame, index) => {
+                        const img = document.createElement('img');
+                        img.src = frame;
+                        img.alt = `Frame ${index}`;
+                        img.className = index === 0 ? 'active' : '';
+                        animationFrames.appendChild(img);
+                    });
+                    
+                    // Update frame counter
+                    frameCounter.textContent = `Frame: 1/${frames.length}`;
+                    
+                    // Show animation controls
+                    animationFrames.style.display = 'block';
+                    animationControls.style.display = 'block';
+                    
+                    // Start playing animation
+                    togglePlayPause();
+                    
+                    statusBadge.textContent = 'Complete';
+                    statusBadge.className = 'badge bg-success';
+                    loadingSpinner.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error running simulation:', error);
+                    statusBadge.textContent = 'Error';
+                    statusBadge.className = 'badge bg-danger';
+                    loadingSpinner.style.display = 'none';
+                    staticPreview.style.display = 'block';
+                });
+            }
+            
+            /**
+             * Toggles play/pause state of animation
+             */
+            function togglePlayPause() {
+                isPlaying = !isPlaying;
+                
+                if (isPlaying) {
+                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+                    animationInterval = setInterval(showNextFrame, 1000);
+                } else {
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+                    stopAnimation();
+                }
+            }
+            
+            /**
+             * Stops the animation interval
+             */
+            function stopAnimation() {
+                if (animationInterval) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                }
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+            }
+            
+            /**
+             * Shows the previous frame in the animation
+             */
+            function showPreviousFrame() {
+                if (frames.length === 0) return;
+                
+                // Hide current frame
+                const currentImg = animationFrames.children[currentFrame];
+                currentImg.classList.remove('active');
+                
+                // Update frame index
+                currentFrame = (currentFrame - 1 + frames.length) % frames.length;
+                
+                // Show new frame
+                const newImg = animationFrames.children[currentFrame];
+                newImg.classList.add('active');
+                
+                // Update frame counter
+                frameCounter.textContent = `Frame: ${currentFrame + 1}/${frames.length}`;
+            }
+            
+            /**
+             * Shows the next frame in the animation
+             */
+            function showNextFrame() {
+                if (frames.length === 0) return;
+                
+                // Hide current frame
+                const currentImg = animationFrames.children[currentFrame];
+                currentImg.classList.remove('active');
+                
+                // Update frame index
+                currentFrame = (currentFrame + 1) % frames.length;
+                
+                // Show new frame
+                const newImg = animationFrames.children[currentFrame];
+                newImg.classList.add('active');
+                
+                // Update frame counter
+                frameCounter.textContent = `Frame: ${currentFrame + 1}/${frames.length}`;
+            }
+            
+            /**
+             * Gets the current simulation settings from the form
+             * @returns {Object} The simulation settings
+             */
+            function getSimulationSettings() {
+                const numAgents = parseInt(numAgentsInput.value);
+                const agentTypes = [];
+                
+                for (let i = 0; i < numAgents; i++) {
+                    const select = document.getElementById(`agent-type-${i}`);
+                    agentTypes.push(select.value);
+                }
+                
+                return {
+                    num_agents: numAgents,
+                    max_iteration: parseInt(maxIterationsInput.value),
+                    health_config: parseInt(healthConfigSelect.value),
+                    anim_profile: parseInt(animProfileSelect.value),
+                    alpha: parseFloat(alphaInput.value),
+                    beta: parseFloat(betaInput.value),
+                    agent_types: agentTypes
+                };
+            }
+        });
+    </script>
+</body>
+</html> 

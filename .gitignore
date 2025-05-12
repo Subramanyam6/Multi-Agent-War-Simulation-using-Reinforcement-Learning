@@ -1,0 +1,79 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+*.env
+
+# Flask instance folder
+instance/
+
+# Local env files
+.env
+.env.*
+
+# Python distribution and packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs and debug
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+coverage.xml
+*.cover
+.cache
+nosetests.xml
+coverage.xml
+*.mo
+
+# Test & coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+.coverage
+.cache/
+
+# Editor-specific
+.vscode/
+.idea/
+*.swp
+
+# Mac system files
+.DS_Store
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# MyPy & Pylint
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+
+# Local databases
+*.sqlite3
+*.db
+
+# Gunicorn or server PIDs
+*.pid

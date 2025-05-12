@@ -11,6 +11,9 @@ class GameStatusUpdate:
         self.settings = settings
 
     def update(self, dynamic_env):
+        # Track alliance proposals to detect cycles
+        alliance_proposals = {}
+        
         # refreshing and documenting proposals for each agent:
         for eachagent in dynamic_env.agents_list:
             eachagent.proposal_request = None
@@ -19,6 +22,19 @@ class GameStatusUpdate:
                 eachagent.proposal_request \
                     = eachagent.latest_action - dynamic_env.number_of_agents
                 # gives the agent_id of the agent that was proposed to
+                
+                # Track alliance proposals to detect potential cycles
+                proposer_id = eachagent.agent_id
+                proposed_id = eachagent.proposal_request
+                
+                if proposer_id not in alliance_proposals:
+                    alliance_proposals[proposer_id] = []
+                alliance_proposals[proposer_id].append(proposed_id)
+                
+                # If the same proposal has been made too many times, penalize it
+                if len(alliance_proposals[proposer_id]) > 3 and alliance_proposals[proposer_id][-3:].count(proposed_id) == 3:
+                    # Penalize repetitive alliance proposals to break cycles
+                    eachagent.current_reward -= 0.5
 
         # iterating over each opponent:
         for eachagent in dynamic_env.agents_list: #TODO: Make sure there isn't any unnecessarily duplicated code
@@ -71,7 +87,9 @@ class GameStatusUpdate:
                         if rand_health_prob < health_prob:
                             # updating environmental agent health:
                             if dynamic_env.health_list[eachagent.agent_id] > 0:
-                                dynamic_env.health_list[eachagent.agent_id] -= 1
+                                # Use health granularity for decreasing health
+                                dynamic_env.health_list[eachagent.agent_id] = dynamic_env.adjust_health(
+                                    dynamic_env.health_list[eachagent.agent_id], increase=False)
                                 # updating self agent health:
                                 eachagent.health_list[eachagent.agent_id] = dynamic_env.health_list[eachagent.agent_id]
                             # checking if the agent is dead:
@@ -102,8 +120,10 @@ class GameStatusUpdate:
                         # updating the agent's health:
                         if rand_health_prob < health_prob:
                             # updating environmental agent health:
-                            if dynamic_env.health_list[eachagent.agent_id] < 2 and eachagent.is_alive == True:
-                                dynamic_env.health_list[eachagent.agent_id] += 1
+                            if dynamic_env.health_list[eachagent.agent_id] < dynamic_env.max_health and eachagent.is_alive == True:
+                                # Use health granularity for increasing health
+                                dynamic_env.health_list[eachagent.agent_id] = dynamic_env.adjust_health(
+                                    dynamic_env.health_list[eachagent.agent_id], increase=True)
                                 # updating self agent health:
                                 eachagent.health_list[eachagent.agent_id] = dynamic_env.health_list[eachagent.agent_id]
                         # handling animosity:
@@ -143,7 +163,9 @@ class GameStatusUpdate:
                         if rand_health_prob < health_prob:
                             # updating environmental agent health:
                             if dynamic_env.health_list[eachagent.agent_id] > 0:
-                                dynamic_env.health_list[eachagent.agent_id] -= 1
+                                # Use health granularity for decreasing health
+                                dynamic_env.health_list[eachagent.agent_id] = dynamic_env.adjust_health(
+                                    dynamic_env.health_list[eachagent.agent_id], increase=False)
                                 # updating self agent health:
                                 eachagent.health_list[eachagent.agent_id] = dynamic_env.health_list[eachagent.agent_id]
                             # checking if the agent is dead:
@@ -178,7 +200,9 @@ class GameStatusUpdate:
                         if rand_health_prob < health_prob:
                             # updating environmental agent health:
                             if dynamic_env.health_list[eachagent.agent_id] > 0:
-                                dynamic_env.health_list[eachagent.agent_id] -= 1
+                                # Use health granularity for decreasing health
+                                dynamic_env.health_list[eachagent.agent_id] = dynamic_env.adjust_health(
+                                    dynamic_env.health_list[eachagent.agent_id], increase=False)
                                 # updating self agent health:
                                 eachagent.health_list[eachagent.agent_id] = dynamic_env.health_list[eachagent.agent_id]
                             # checking if the agent is dead:
@@ -211,7 +235,9 @@ class GameStatusUpdate:
                         if rand_health_prob < health_prob:
                             # updating environmental agent health:
                             if dynamic_env.health_list[eachagent.agent_id] > 0:
-                                dynamic_env.health_list[eachagent.agent_id] -= 1
+                                # Use health granularity for decreasing health
+                                dynamic_env.health_list[eachagent.agent_id] = dynamic_env.adjust_health(
+                                    dynamic_env.health_list[eachagent.agent_id], increase=False)
                                 # updating self agent health:
                                 eachagent.health_list[eachagent.agent_id] = dynamic_env.health_list[eachagent.agent_id]
                             # checking if the agent is dead:
@@ -245,16 +271,33 @@ class GameStatusUpdate:
                                     else:
                                         anim_alliance_prob = self.settings.alliance_prob_with_no_animosity
                                     # alliance formation
-                                    if anim_alliance_prob < rand_alliance_prob:
-                                        # handling betrayal animosities with ex-alliance members:
-                                        if eachagent.alliance_pair != None: # @TODO: double check this
+                                    if rand_alliance_prob < anim_alliance_prob:
+                                        # First, properly dissolve any existing alliances
+                                        
+                                        # If eachagent already has an alliance, dissolve it
+                                        if eachagent.alliance_pair is not None:
+                                            # Increase animosity with the betrayed ally
                                             dynamic_env.animosity_table[eachagent.agent_id][eachagent.alliance_pair.agent_id] = 2
-                                        # updating the alliance_pair for both the agents:
+                                            # Reset the betrayed ally's alliance
+                                            old_ally = eachagent.alliance_pair
+                                            old_ally.alliance_pair = None
+                                            old_ally.alliance_status = 1.0  # Reset to default
+                                        
+                                        # If eachopponent already has an alliance, dissolve it
+                                        if eachopponent.alliance_pair is not None:
+                                            # Increase animosity with the betrayed ally
+                                            dynamic_env.animosity_table[eachopponent.agent_id][eachopponent.alliance_pair.agent_id] = 2
+                                            # Reset the betrayed ally's alliance
+                                            old_ally = eachopponent.alliance_pair
+                                            old_ally.alliance_pair = None
+                                            old_ally.alliance_status = 1.0  # Reset to default
+                                        
+                                        # Now form the new alliance
                                         eachagent.alliance_pair = eachopponent
                                         eachopponent.alliance_pair = eachagent
                                         # updating the alliance_status for both the agents:
-                                        eachagent.alliance_status = 1.5 # standard value
-                                        eachopponent.alliance_status = 1.5 # standard value
+                                        eachagent.alliance_status = self.settings.alliance_status_weight
+                                        eachopponent.alliance_status = self.settings.alliance_status_weight
                                         # printing alliance formations:
                                         # print('alliances formed between agent {} and agent {}'.
                                         #       format(eachagent.agent_id, eachopponent.agent_id) )
