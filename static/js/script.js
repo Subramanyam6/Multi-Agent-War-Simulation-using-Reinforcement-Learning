@@ -416,6 +416,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) {
                 return response.json().then(err => {
                     throw new Error(err.error || `HTTP error! Status: ${response.status}`);
+                }).catch(() => {
+                    // If JSON parsing fails, provide a clearer error
+                    throw new Error(`Server error (${response.status}). Please try again later.`);
                 });
             }
             return response.json();
@@ -497,10 +500,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 staticPreview.style.opacity = '1';
             }, 10);
             
+            // Create a more user-friendly error message
+            let userMessage = "Error processing simulation. Please try again.";
+            
+            // Handle specific known error patterns
+            if (error.message.includes("did not match the expected pattern")) {
+                userMessage = "Animation generation failed. The server couldn't create the visualization properly.";
+            } else if (error.message.includes("numpy")) {
+                userMessage = "Server error: NumPy library issue. Please contact the administrator.";
+            } else if (error.message.includes("ffmpeg")) {
+                userMessage = "Animation generation failed. The server is missing required components.";
+            } else if (error.message.includes("500")) {
+                userMessage = "Server error. The simulation was too complex or encountered an issue.";
+            } else if (error.message.length > 10) {
+                // If we have a specific error message, use it
+                userMessage = error.message;
+            }
+            
             // Update preview message with specific error
             const messageElement = staticPreview.querySelector('p');
-            messageElement.textContent = `Error: ${error.message || "Error processing simulation. Please try again."}`;
+            messageElement.innerHTML = `<strong>Error:</strong> ${userMessage}`;
             messageElement.style.color = 'var(--danger)';
+            
+            // Add a retry button
+            if (!document.getElementById('retry-button')) {
+                const retryButton = document.createElement('button');
+                retryButton.id = 'retry-button';
+                retryButton.className = 'btn btn-primary mt-3';
+                retryButton.textContent = 'Try Again';
+                retryButton.addEventListener('click', function() {
+                    // Remove the retry button
+                    this.remove();
+                    // Reset the error message
+                    messageElement.textContent = 'Loading preview...';
+                    messageElement.style.color = '';
+                    // Generate a new preview
+                    generatePreview();
+                });
+                staticPreview.appendChild(retryButton);
+            }
             
             // Update status
             setStatus('Error', 'danger');

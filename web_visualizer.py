@@ -14,6 +14,7 @@ import base64
 from matplotlib.patches import Rectangle, FancyArrowPatch, Circle
 from matplotlib.path import Path
 import matplotlib.patches as patches
+import logging
 
 # Import necessary components with correct package paths
 from CodeBase.Environment import Environment
@@ -281,9 +282,15 @@ class WebSimulationVisualizer:
         Works on Safari, Chrome, Edge, etc.
         """
         try:
-            # Try HTML5 video first
-            rcParams['animation.html'] = 'html5'
-            rcParams['animation.embed_limit'] = 100_000_000  # 100 MB to ensure full animation works
+            # Check if ffmpeg is available
+            import shutil
+            ffmpeg_available = shutil.which('ffmpeg') is not None
+            logger = logging.getLogger(__name__)
+            
+            if ffmpeg_available:
+                logger.info("ffmpeg detected - will try HTML5 video output")
+            else:
+                logger.warning("ffmpeg not found - will use JavaScript output instead")
             
             # Pre-compute all frames to avoid delay and ensure smooth playback
             frames_data = []
@@ -342,7 +349,7 @@ class WebSimulationVisualizer:
                     final_state['game_over_message'] = game_over_message
                 
                 # Add duplicates of the final frame to create a pause
-                for _ in range(10):  # Reduced from 20 to 10 frames for better performance
+                for _ in range(5):  # Reduced for better performance
                     frames_data.append(final_state)
             
             # Ensure we have at least some frames
@@ -371,12 +378,23 @@ class WebSimulationVisualizer:
                 repeat=True   # Enable looping
             )
             
-            try:
-                # Try HTML5 video first
-                html_output = anim.to_html5_video()
-            except Exception as e:
-                print(f"HTML5 video generation failed, falling back to jshtml: {str(e)}")
-                # Fall back to jshtml if video generation fails
+            # Choose animation format based on ffmpeg availability
+            if ffmpeg_available:
+                # Try HTML5 video if ffmpeg is available
+                try:
+                    rcParams['animation.html'] = 'html5'
+                    rcParams['animation.embed_limit'] = 100_000_000  # 100 MB to ensure full animation works
+                    html_output = anim.to_html5_video()
+                    logger.info("Successfully generated HTML5 video")
+                except Exception as e:
+                    logger.error(f"HTML5 video generation failed: {str(e)}")
+                    # Fall back to jshtml
+                    rcParams['animation.html'] = 'jshtml'
+                    html_output = anim.to_jshtml()
+                    logger.info("Fell back to JavaScript HTML animation")
+            else:
+                # Use jshtml directly if ffmpeg isn't available
+                logger.info("Using JavaScript HTML animation (no ffmpeg)")
                 rcParams['animation.html'] = 'jshtml'
                 html_output = anim.to_jshtml()
             
@@ -416,18 +434,46 @@ class WebSimulationVisualizer:
             return html_output
             
         except Exception as e:
+            # In case of any error, try to generate a static image fallback
             import traceback
-            print(f"Error generating animation: {str(e)}")
-            print(traceback.format_exc())
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error generating animation: {str(e)}")
+            logger.error(traceback.format_exc())
             
-            # Return a simple error message with styling
-            return f"""
-            <div style="text-align: center; padding: 20px; background-color: #2D2D44; color: white; border-radius: 8px; margin: 20px;">
-                <h3 style="color: #FF6464;">Error Generating Simulation</h3>
-                <p>An error occurred while generating the simulation visualization.</p>
-                <p style="font-family: monospace; background: #1E1E28; padding: 10px; border-radius: 4px;">{str(e)}</p>
-            </div>
-            """
+            try:
+                # Try to create a static frame as fallback
+                logger.info("Attempting to generate static image fallback")
+                
+                # Create buffer for image
+                buf = io.BytesIO()
+                self.fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+                buf.seek(0)
+                
+                # Get image as base64 encoded string
+                img_data = base64.b64encode(buf.read()).decode('utf-8')
+                
+                # Create HTML with the static image and error message
+                return f"""
+                <div style="text-align: center; padding: 20px; background-color: #2D2D44; color: white; border-radius: 8px; margin: 20px;">
+                    <h3>Simulation Final State</h3>
+                    <p style="color: #FF6464;">Animation generation failed, showing static result instead.</p>
+                    <div style="max-width: 100%; margin: 20px auto;">
+                        <img src="data:image/png;base64,{img_data}" style="width: 100%; max-width: 800px; height: auto;" alt="Simulation result" />
+                    </div>
+                    <p style="font-family: monospace; background: #1E1E28; padding: 10px; border-radius: 4px; font-size: 12px; overflow: auto;">Error: {str(e)}</p>
+                </div>
+                """
+            except Exception as inner_e:
+                # If even the static image fails, return a simple error message
+                logger.error(f"Static fallback also failed: {str(inner_e)}")
+                return f"""
+                <div style="text-align: center; padding: 20px; background-color: #2D2D44; color: white; border-radius: 8px; margin: 20px;">
+                    <h3 style="color: #FF6464;">Error Generating Simulation</h3>
+                    <p>An error occurred while generating the simulation visualization.</p>
+                    <p style="font-family: monospace; background: #1E1E28; padding: 10px; border-radius: 4px;">{str(e)}</p>
+                    <p style="font-family: monospace; background: #1E1E28; padding: 10px; border-radius: 4px; font-size: 12px; overflow: auto;">Fallback also failed: {str(inner_e)}</p>
+                </div>
+                """
 
     def capture_current_state(self):
         """Capture the current state of the simulation for animation"""
