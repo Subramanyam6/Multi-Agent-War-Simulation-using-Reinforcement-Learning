@@ -170,8 +170,8 @@ def train_and_run():
     # Return HTML animation
     return jsonify({'animation_html': html_animation})
 
-# Vercel requires the "app" variable to be exposed for serverless deployment
+# Gunicorn will serve the app when deployed to Render.com
 if __name__ == '__main__':
     # When running locally, use debug mode
-    port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True) 

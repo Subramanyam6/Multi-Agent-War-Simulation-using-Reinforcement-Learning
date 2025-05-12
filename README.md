@@ -48,50 +48,40 @@ A browser-based visualization tool for multi-agent reinforcement learning in a w
 
 5. Open your browser and navigate to `http://localhost:5000`
 
-### Deployment to Vercel
+### Deployment to Render.com
 
 1. Fork or clone this repository to your GitHub account
 
-2. Sign up for a Vercel account at [vercel.com](https://vercel.com)
+2. Sign up for a Render.com account at [render.com](https://render.com)
 
-3. Install the Vercel CLI
+3. From your Render dashboard, click "New" and select "Web Service"
+
+4. Connect your GitHub account and select the repository
+
+5. Configure your web service:
+   - Name: `multi-agent-war-simulation` (or any name you prefer)
+   - Environment: Python
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `gunicorn app:app`
+
+6. Click "Create Web Service"
+
+7. Your app will be deployed to a URL like `https://your-service-name.onrender.com`
+
+### Alternative Deployment with render.yaml
+
+If you have the Render CLI installed:
+
+1. Clone this repository and navigate to its directory
+
+2. Make sure you're logged in to your Render account in the CLI
+
+3. Run the following command:
    ```bash
-   npm install -g vercel
+   render deploy
    ```
 
-4. Log in to Vercel
-   ```bash
-   vercel login
-   ```
-
-5. Deploy directly from your project folder
-   ```bash
-   vercel
-   ```
-
-6. Follow the prompts to complete the deployment process:
-   - Set the project name
-   - Confirm the directory is correct (should be the project root)
-   - Set framework preset to "Other"
-   - Confirm deployment settings
-
-7. Your app will be deployed to a URL like `https://your-project-name.vercel.app`
-
-### Alternative Deployment via GitHub
-
-1. Push your project to GitHub
-
-2. Log in to [Vercel](https://vercel.com) and click "New Project"
-
-3. Import your GitHub repository
-
-4. Configure these settings:
-   - Framework Preset: Other
-   - Build Command: None (leave blank)
-   - Output Directory: None (leave blank)
-   - Install Command: `pip install -r requirements.txt`
-
-5. Click "Deploy" and wait for the deployment to complete
+4. The `render.yaml` file in the repository will automatically configure your deployment
 
 ## Configuration Options
 
