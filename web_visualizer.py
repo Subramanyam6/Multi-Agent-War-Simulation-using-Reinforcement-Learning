@@ -280,176 +280,154 @@ class WebSimulationVisualizer:
         Return a self‑contained <div> with JS playback instead of a video file.
         Works on Safari, Chrome, Edge, etc.
         """
-        # Pre-compute all frames to avoid delay and ensure smooth playback
-        frames_data = []
-        max_frames = min(100, self.simulation.max_iteration)  # Limit total frames for performance
-        
-        # Store initial state
-        frames_data.append(self.capture_current_state())
-        
-        # Track if game completed naturally
-        natural_completion = False
-        
-        # Run simulation steps and capture each state
-        for _ in range(max_frames-1):
-            if not self.simulation.game_is_on:
-                natural_completion = True
-                break
-            self.simulation.update_time_step()
-            self.step += 1  # Increment step counter here
+        try:
+            # Try HTML5 video first
+            rcParams['animation.html'] = 'html5'
+            rcParams['animation.embed_limit'] = 100_000_000  # 100 MB to ensure full animation works
+            
+            # Pre-compute all frames to avoid delay and ensure smooth playback
+            frames_data = []
+            max_frames = min(100, self.simulation.max_iteration)  # Limit total frames for performance
+            
+            # Store initial state
             frames_data.append(self.capture_current_state())
-        
-        # If we hit the frame limit but game isn't over, keep running until completion
-        if not natural_completion and self.simulation.game_is_on:
-            while self.simulation.game_is_on and _ < self.simulation.max_iteration * 1.5:  # Safety limit
+            
+            # Track if game completed naturally
+            natural_completion = False
+            
+            # Run simulation steps and capture each state
+            for _ in range(max_frames-1):
+                if not self.simulation.game_is_on:
+                    natural_completion = True
+                    break
                 self.simulation.update_time_step()
                 self.step += 1  # Increment step counter here
-                _ += 1
-                # Only capture a few more frames to prevent massive animations
-                if _ < max_frames + 10:
-                    frames_data.append(self.capture_current_state())
-        
-        # Add a final frame that stays visible longer if simulation ended
-        if len(frames_data) > 0:
-            # Duplicate the last frame 3 times to make it stay visible longer
-            final_state = frames_data[-1]
+                frames_data.append(self.capture_current_state())
             
-            # Add game over information to the final state
-            if not self.simulation.game_is_on:
-                # Get list of alive agents
-                alive_agents = [agent for agent in self.env.agents_list if agent.is_alive]
-                
-                # Create game over message
-                game_over_message = "GAME OVER"
-                if len(alive_agents) == 1:
-                    # Single winner
-                    winner = alive_agents[0]
-                    game_over_message += f"\nWinner: Agent {winner.agent_id} ({winner.agent_type})"
-                elif len(alive_agents) == 2 and alive_agents[0].alliance_pair == alive_agents[1]:
-                    # Alliance winners
-                    game_over_message += f"\nAlliance Winners: Agent {alive_agents[0].agent_id} ({alive_agents[0].agent_type}) & Agent {alive_agents[1].agent_id} ({alive_agents[1].agent_type})"
-                else:
-                    # Multiple survivors
-                    agent_info = [f"Agent {agent.agent_id} ({agent.agent_type})" for agent in alive_agents]
-                    game_over_message += f"\nSurvivors: {', '.join(agent_info)}"
-                
-                # Add game over message to the final state
-                final_state['game_over_message'] = game_over_message
+            # If we hit the frame limit but game isn't over, keep running until completion
+            if not natural_completion and self.simulation.game_is_on:
+                while self.simulation.game_is_on and _ < self.simulation.max_iteration * 1.5:  # Safety limit
+                    self.simulation.update_time_step()
+                    self.step += 1  # Increment step counter here
+                    _ += 1
+                    # Only capture a few more frames to prevent massive animations
+                    if _ < max_frames + 10:
+                        frames_data.append(self.capture_current_state())
             
-            # Add 20 duplicates of the final frame to create a 5-second pause (250ms per frame * 20 = 5000ms)
-            for _ in range(20):
-                frames_data.append(final_state)
-        
-        # Ensure we have at least some frames
-        if len(frames_data) < 2:
-            # Generate at least one more frame to have animation
-            if self.simulation.game_is_on:
-                self.simulation.update_time_step()
-            frames_data.append(self.capture_current_state())
-        
-        # Define frame update function that uses pre-computed states
-        def animation_update(frame_idx):
-            # Use modulo to loop through frames if we run out
-            idx = min(frame_idx, len(frames_data)-1)
-            return self.apply_state(frames_data[idx])
-        
-        # Set figure DPI for better sizing in browser
-        self.fig.set_dpi(100)
-        
-        # Build the animation with pre-computed states
-        anim = animation.FuncAnimation(
-            self.fig,
-            animation_update,
-            frames=len(frames_data),
-            interval=250,  # 250ms per frame (4 frames per second)
-            blit=False,
-            repeat=True   # Enable looping
-        )
-
-        # Use the JavaScript HTML backend with customizations
-        rcParams['animation.html'] = 'jshtml'
-        rcParams['animation.embed_limit'] = 100_000_000  # 100 MB to ensure full animation works
-        
-        # Get the HTML output
-        html_output = anim.to_jshtml()
-        
-        # Insert custom CSS to make controls more visible and improve sizing
-        custom_css = """
-        <style>
-        .animation-container {
-            width: 100% !important;
-            max-width: 100% !important;
-            height: auto !important;
-            margin: 0 auto !important;
-            overflow: visible !important;
-        }
-        .animation-container button {
-            background-color: #444 !important;
-            color: white !important;
-            border: 1px solid #666 !important;
-            padding: 5px 10px !important;
-            margin: 5px !important;
-            font-size: 14px !important;
-            border-radius: 4px !important;
-            cursor: pointer !important;
-            display: inline-block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        .animation-container img, .animation-container canvas {
-            max-width: 100% !important;
-            width: auto !important; 
-            height: auto !important;
-            margin: 0 auto !important;
-            display: block !important;
-        }
-        /* Ensure the figure has proper spacing */
-        .matplotlib-figure {
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: visible !important;
-        }
-        /* Make sure the SVG doesn't get clipped */
-        svg.matplotlib-canvas {
-            overflow: visible !important;
-            max-width: 100% !important;
-        }
-        </style>
-        """
-        
-        # Add custom JavaScript for message handling
-        custom_js = """
-        <script>
-        // Listen for messages from parent window
-        window.addEventListener('message', function(event) {
-            // Find the animation object
-            var animDivs = document.querySelectorAll('div[id^="animation_"]');
-            if (animDivs.length > 0) {
-                var animId = animDivs[0].id.replace('animation_', '');
-                var animObj = window['anim_' + animId];
+            # Add a final frame that stays visible longer if simulation ended
+            if len(frames_data) > 0:
+                # Duplicate the last frame 3 times to make it stay visible longer
+                final_state = frames_data[-1]
                 
-                if (animObj) {
-                    if (event.data === 'play') {
-                        animObj.play();
-                    } else if (event.data === 'pause') {
-                        animObj.pause();
-                    } else if (event.data === 'reload') {
-                        animObj.pause();
-                        animObj.frame(0);
-                        setTimeout(function() {
-                            animObj.play();
-                        }, 100);
-                    }
-                }
+                # Add game over information to the final state
+                if not self.simulation.game_is_on:
+                    # Get list of alive agents
+                    alive_agents = [agent for agent in self.env.agents_list if agent.is_alive]
+                    
+                    # Create game over message
+                    game_over_message = "GAME OVER"
+                    if len(alive_agents) == 1:
+                        # Single winner
+                        winner = alive_agents[0]
+                        game_over_message += f"\nWinner: Agent {winner.agent_id} ({winner.agent_type})"
+                    elif len(alive_agents) == 2 and alive_agents[0].alliance_pair == alive_agents[1]:
+                        # Alliance winners
+                        game_over_message += f"\nAlliance Winners: Agent {alive_agents[0].agent_id} ({alive_agents[0].agent_type}) & Agent {alive_agents[1].agent_id} ({alive_agents[1].agent_type})"
+                    else:
+                        # Multiple survivors
+                        agent_info = [f"Agent {agent.agent_id} ({agent.agent_type})" for agent in alive_agents]
+                        game_over_message += f"\nSurvivors: {', '.join(agent_info)}"
+                    
+                    # Add game over message to the final state
+                    final_state['game_over_message'] = game_over_message
+                
+                # Add duplicates of the final frame to create a pause
+                for _ in range(10):  # Reduced from 20 to 10 frames for better performance
+                    frames_data.append(final_state)
+            
+            # Ensure we have at least some frames
+            if len(frames_data) < 2:
+                # Generate at least one more frame to have animation
+                if self.simulation.game_is_on:
+                    self.simulation.update_time_step()
+                frames_data.append(self.capture_current_state())
+            
+            # Define frame update function that uses pre-computed states
+            def animation_update(frame_idx):
+                # Use modulo to loop through frames if we run out
+                idx = min(frame_idx, len(frames_data)-1)
+                return self.apply_state(frames_data[idx])
+            
+            # Set figure DPI for better sizing in browser
+            self.fig.set_dpi(100)
+            
+            # Build the animation with pre-computed states
+            anim = animation.FuncAnimation(
+                self.fig,
+                animation_update,
+                frames=len(frames_data),
+                interval=250,  # 250ms per frame (4 frames per second)
+                blit=False,
+                repeat=True   # Enable looping
+            )
+            
+            try:
+                # Try HTML5 video first
+                html_output = anim.to_html5_video()
+            except Exception as e:
+                print(f"HTML5 video generation failed, falling back to jshtml: {str(e)}")
+                # Fall back to jshtml if video generation fails
+                rcParams['animation.html'] = 'jshtml'
+                html_output = anim.to_jshtml()
+            
+            # Insert custom CSS to make controls more visible and improve sizing
+            custom_css = """
+            <style>
+            .animation-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
+                margin: 0 auto !important;
+                overflow: visible !important;
             }
-        });
-        </script>
-        """
-        
-        # Insert the custom CSS and JS into the animation HTML
-        html_output = html_output.replace('</div>', custom_css + custom_js + '</div>')
-        
-        return html_output
+            video, img {
+                max-width: 100% !important;
+                width: auto !important;
+                height: auto !important;
+                margin: 0 auto !important;
+                display: block !important;
+            }
+            .animation-container button {
+                background-color: #444 !important;
+                color: white !important;
+                border: 1px solid #666 !important;
+                padding: 5px 10px !important;
+                margin: 5px !important;
+                font-size: 14px !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+            }
+            </style>
+            """
+            
+            # Insert the custom CSS into the animation HTML
+            html_output = html_output.replace('</div>', custom_css + '</div>')
+            
+            return html_output
+            
+        except Exception as e:
+            import traceback
+            print(f"Error generating animation: {str(e)}")
+            print(traceback.format_exc())
+            
+            # Return a simple error message with styling
+            return f"""
+            <div style="text-align: center; padding: 20px; background-color: #2D2D44; color: white; border-radius: 8px; margin: 20px;">
+                <h3 style="color: #FF6464;">Error Generating Simulation</h3>
+                <p>An error occurred while generating the simulation visualization.</p>
+                <p style="font-family: monospace; background: #1E1E28; padding: 10px; border-radius: 4px;">{str(e)}</p>
+            </div>
+            """
 
     def capture_current_state(self):
         """Capture the current state of the simulation for animation"""
