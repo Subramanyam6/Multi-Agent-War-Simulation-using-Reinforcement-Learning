@@ -414,11 +414,17 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+                return response.json().then(err => {
+                    throw new Error(err.error || `HTTP error! Status: ${response.status}`);
+                });
             }
             return response.json();
         })
         .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
             // Store animation data for potential reuse
             lastAnimationData = data.animation_html;
             
@@ -491,9 +497,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 staticPreview.style.opacity = '1';
             }, 10);
             
-            // Update preview message
+            // Update preview message with specific error
             const messageElement = staticPreview.querySelector('p');
-            messageElement.textContent = "Error processing simulation. Please try again.";
+            messageElement.textContent = `Error: ${error.message || "Error processing simulation. Please try again."}`;
             messageElement.style.color = 'var(--danger)';
             
             // Update status

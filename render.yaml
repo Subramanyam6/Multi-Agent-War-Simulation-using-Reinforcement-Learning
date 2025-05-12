@@ -4,8 +4,10 @@ services:
     name: multi-agent-war-simulation
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: ./build.sh
     startCommand: gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.0 
+        value: 3.11.0
+      - key: PYTHONPATH
+        value: /opt/render/project/src 
