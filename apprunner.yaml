@@ -1,0 +1,25 @@
+version: 1.0
+runtime: python3
+build:
+  commands:
+    build:
+      - pip install -r requirements.txt
+run:
+  runtime-version: 3.9
+  command: gunicorn --bind=0.0.0.0:8000 --timeout=120 --workers=2 --threads=2 --log-level=debug app_standalone:application
+  network:
+    port: 8000
+    env: HTTP
+  health-check:
+    path: /health
+    interval: 20
+    timeout: 10
+    healthy-threshold: 1
+    unhealthy-threshold: 5
+  env:
+    - name: PORT
+      value: "8000"
+    - name: PYTHONPATH
+      value: "/app"
+    - name: PYTHONUNBUFFERED
+      value: "1" 

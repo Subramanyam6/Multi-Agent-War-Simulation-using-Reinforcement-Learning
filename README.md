@@ -23,7 +23,7 @@ A browser-based visualization tool for multi-agent reinforcement learning in a w
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/Bala-Subramanyam/Multi-Agent-War-Simulation-using-Reinforcement-Learning.git
+   git clone https://github.com/Subramanyam6/Multi-Agent-War-Simulation-using-Reinforcement-Learning.git
    cd Multi-Agent-War-Simulation-using-Reinforcement-Learning
    ```
 
@@ -47,41 +47,6 @@ A browser-based visualization tool for multi-agent reinforcement learning in a w
    ```
 
 5. Open your browser and navigate to `http://localhost:5000`
-
-### Deployment to Render.com
-
-1. Fork or clone this repository to your GitHub account
-
-2. Sign up for a Render.com account at [render.com](https://render.com)
-
-3. From your Render dashboard, click "New" and select "Web Service"
-
-4. Connect your GitHub account and select the repository
-
-5. Configure your web service:
-   - Name: `multi-agent-war-simulation` (or any name you prefer)
-   - Environment: Python
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `gunicorn app:app`
-
-6. Click "Create Web Service"
-
-7. Your app will be deployed to a URL like `https://your-service-name.onrender.com`
-
-### Alternative Deployment with render.yaml
-
-If you have the Render CLI installed:
-
-1. Clone this repository and navigate to its directory
-
-2. Make sure you're logged in to your Render account in the CLI
-
-3. Run the following command:
-   ```bash
-   render deploy
-   ```
-
-4. The `render.yaml` file in the repository will automatically configure your deployment
 
 ## Configuration Options
 

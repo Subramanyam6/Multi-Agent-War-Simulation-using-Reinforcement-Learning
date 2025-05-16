@@ -57,10 +57,12 @@ class Simulation:
         
         # Count how many RL agents we have
         rl_agent_count = sum(1 for agent in self.env.agents_list if agent.agent_type == "RL")
-        # Adjust number of subgames based on RL agent count
+        # Adjust number of subgames based on RL agent count and max_iteration
         if rl_agent_count > 0:
-            # Reduce subgames if there are multiple RL agents to train
-            self.max_subgames = max(50, 100 // rl_agent_count)
+            # Scale subgames based on max_iteration - fewer iterations need more subgames
+            iteration_factor = 1000 / max(100, self.settings.max_iteration)
+            # But also reduce if there are multiple RL agents
+            self.max_subgames = max(20, int(100 * iteration_factor / max(1, rl_agent_count)))
         else:
             # No RL agents, minimal training needed
             self.max_subgames = 10

@@ -60,7 +60,10 @@ class Agent:
                 Agent.shared_policy_net = AgentNetwork(self.state_size, settings.hidden_size, self.action_size).to(self.device)
                 Agent.shared_target_net = AgentNetwork(self.state_size, settings.hidden_size, self.action_size).to(self.device)
                 Agent.shared_target_net.load_state_dict(Agent.shared_policy_net.state_dict())
-                Agent.shared_optimizer = torch.optim.Adam(Agent.shared_policy_net.parameters(), lr=settings.learning_rate)
+                
+                # Use alpha for learning rate if it's meant for RL learning
+                learning_rate = settings.alpha if settings.alpha >= 0.001 else settings.learning_rate
+                Agent.shared_optimizer = torch.optim.Adam(Agent.shared_policy_net.parameters(), lr=learning_rate)
                 Agent.shared_memory = ReplayBuffer(settings.replay_buffer_size)
             
             # All RL agents use the shared networks
@@ -171,7 +174,9 @@ class Agent:
                 
             elif self.agent_type == AGENT_TYPE_RL:
                 # RL agent uses neural network with exploration
-                if t < 1000 or random.random() < self.epsilon:
+                # Use a percentage of max_iteration instead of hardcoded 1000
+                explore_threshold = min(1000, int(self.settings.max_iteration * 0.2))
+                if t < explore_threshold or random.random() < self.epsilon:
                     chosen_action = random.choice(self.actions)
                 else:
                     # Use neural network for decision making

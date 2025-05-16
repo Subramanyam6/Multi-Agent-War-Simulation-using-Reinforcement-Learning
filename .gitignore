@@ -80,3 +80,8 @@ htmlcov/
 
 # Gunicorn or server PIDs
 *.pid
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

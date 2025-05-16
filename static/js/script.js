@@ -18,6 +18,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const animationContainer = document.getElementById('animation-container');
     const infoCollapse = document.getElementById('simulationInfoCollapse');
     
+    // Welcome banner elements
+    const welcomeBanner = document.getElementById('welcome-banner');
+    const welcomeBannerBtn = document.getElementById('welcome-banner-btn');
+    
+    // Check if first visit using localStorage
+    if (localStorage.getItem('bannerDismissed') !== 'true') {
+        // Show welcome banner
+        welcomeBanner.style.display = 'flex';
+    } else {
+        // Hide welcome banner
+        welcomeBanner.classList.add('hidden');
+    }
+    
+    // Handle welcome banner button click
+    welcomeBannerBtn.addEventListener('click', function() {
+        welcomeBanner.classList.add('hidden');
+        localStorage.setItem('bannerDismissed', 'true');
+    });
+    
     // RL settings element references
     const learningRateInput = document.getElementById('learning-rate');
     const targetUpdateFrequencyInput = document.getElementById('target-update-frequency');
@@ -414,20 +433,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || `HTTP error! Status: ${response.status}`);
-                }).catch(() => {
-                    // If JSON parsing fails, provide a clearer error
-                    throw new Error(`Server error (${response.status}). Please try again later.`);
-                });
+                throw new Error(`HTTP error! Status: ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
             // Store animation data for potential reuse
             lastAnimationData = data.animation_html;
             
@@ -500,45 +510,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 staticPreview.style.opacity = '1';
             }, 10);
             
-            // Create a more user-friendly error message
-            let userMessage = "Error processing simulation. Please try again.";
-            
-            // Handle specific known error patterns
-            if (error.message.includes("did not match the expected pattern")) {
-                userMessage = "Animation generation failed. The server couldn't create the visualization properly.";
-            } else if (error.message.includes("numpy")) {
-                userMessage = "Server error: NumPy library issue. Please contact the administrator.";
-            } else if (error.message.includes("ffmpeg")) {
-                userMessage = "Animation generation failed. The server is missing required components.";
-            } else if (error.message.includes("500")) {
-                userMessage = "Server error. The simulation was too complex or encountered an issue.";
-            } else if (error.message.length > 10) {
-                // If we have a specific error message, use it
-                userMessage = error.message;
-            }
-            
-            // Update preview message with specific error
+            // Update preview message
             const messageElement = staticPreview.querySelector('p');
-            messageElement.innerHTML = `<strong>Error:</strong> ${userMessage}`;
+            messageElement.textContent = "Error processing simulation. Please try again.";
             messageElement.style.color = 'var(--danger)';
-            
-            // Add a retry button
-            if (!document.getElementById('retry-button')) {
-                const retryButton = document.createElement('button');
-                retryButton.id = 'retry-button';
-                retryButton.className = 'btn btn-primary mt-3';
-                retryButton.textContent = 'Try Again';
-                retryButton.addEventListener('click', function() {
-                    // Remove the retry button
-                    this.remove();
-                    // Reset the error message
-                    messageElement.textContent = 'Loading preview...';
-                    messageElement.style.color = '';
-                    // Generate a new preview
-                    generatePreview();
-                });
-                staticPreview.appendChild(retryButton);
-            }
             
             // Update status
             setStatus('Error', 'danger');
@@ -575,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         // Add RL settings if they exist
-        if (learningRateInput) settings.learning_rate = parseFloat(learningRateInput.value);
+        if (learningRateInput) settings.alpha = parseFloat(learningRateInput.value);
         if (targetUpdateFrequencyInput) settings.target_update_frequency = parseInt(targetUpdateFrequencyInput.value);
         if (replayBufferSizeInput) settings.replay_buffer_size = parseInt(replayBufferSizeInput.value);
         if (batchSizeInput) settings.batch_size = parseInt(batchSizeInput.value);
