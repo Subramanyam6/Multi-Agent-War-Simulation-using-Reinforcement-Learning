@@ -21,5 +21,5 @@ ENV PYTHONPATH=/app
 
 # Declare the port & start the app with more explicit configuration
 EXPOSE 8000
-CMD ["gunicorn", "--bind=0.0.0.0:8000", "--timeout=120", "--workers=2", "--threads=2", "--log-level=info", "application:application"]
+CMD ["gunicorn", "--bind=0.0.0.0:8000", "--timeout=120", "--workers=2", "--threads=2", "--log-level=info", "app_standalone:application"]
 
