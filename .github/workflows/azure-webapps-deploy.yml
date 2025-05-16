@@ -99,6 +99,15 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_699258C20171445DA00ED4B69CE1487E }}
 
       # Fall back to service principal creds if OIDC fails
+      - name: Debug AZURE_CREDENTIALS
+        run: |
+          echo "Length of JSON: ${#AZURE_CREDENTIALS}"
+          echo "$AZURE_CREDENTIALS" | jq -r .clientId
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+
+
+
       - name: Login to Azure (Service Principal)
         if: steps.azure-login-oidc.outcome != 'success' && env.AZURE_CREDENTIALS != ''
         uses: azure/login@v1
