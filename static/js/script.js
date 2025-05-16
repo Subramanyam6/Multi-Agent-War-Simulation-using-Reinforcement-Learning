@@ -405,6 +405,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get simulation settings
         const settings = getSimulationSettings();
         
+        // Immediately hide any existing animation content to prevent showing behind the spinner
+        animationContainer.style.display = 'none';
+        
         // Show loading spinner with fade-in
         loadingSpinner.style.opacity = '0';
         loadingSpinner.style.display = 'block';
@@ -446,6 +449,9 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 loadingSpinner.style.display = 'none';
             }, 300);
+            
+            // Clear existing content to prevent display issues
+            animationContainer.innerHTML = '';
             
             // Show animation container with fade-in
             animationContainer.style.display = 'block';

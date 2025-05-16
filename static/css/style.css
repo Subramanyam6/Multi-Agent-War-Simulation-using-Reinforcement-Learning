@@ -522,6 +522,24 @@ header .lead {
     text-decoration: underline;
 }
 
+/* GitHub icon styling */
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+}
+
+.github-icon {
+    font-size: 1.25rem;
+    transition: transform 0.5s ease, color 0.3s ease;
+}
+
+.scrolling-text:hover .github-icon {
+    transform: rotate(360deg) scale(1.2);
+    color: var(--primary-dark);
+}
+
 @keyframes scroll-left {
     0% { transform: translateX(100vw); }
     100% { transform: translateX(-100%); }
