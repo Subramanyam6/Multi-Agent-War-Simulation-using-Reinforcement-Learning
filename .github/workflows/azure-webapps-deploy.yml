@@ -103,6 +103,8 @@ jobs:
         run: |
           echo "Length of JSON: ${#AZURE_CREDENTIALS}"
           echo "$AZURE_CREDENTIALS" | jq -r .clientId
+          echo "$AZURE_CREDENTIALS" | jq -r .subscriptionId
+          echo "$AZURE_CREDENTIALS" | jq -r .tenantId
         env:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
