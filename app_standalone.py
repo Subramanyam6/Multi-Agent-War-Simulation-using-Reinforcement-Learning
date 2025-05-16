@@ -74,4 +74,4 @@ if __name__ == "__main__":
     # For local dev, default to 8000
     port = int(os.environ.get('PORT', os.environ.get('WEBSITES_PORT', 8000)))
     logger.info(f"Starting application on port {port}")
-    app.run(host='0.0.0.0', port=port) 
+    app.run(host='0.0.0.0', port=port)
