@@ -26,17 +26,19 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: multi-agent-rl-war  # set this to your application's name
-  PYTHON_VERSION: '3.9'                   # set this to the Python version to use
+  PYTHON_VERSION: '3.9'                  # set this to the Python version to use
+  RESOURCE_GROUP: rg-multi-agent-rl-war  # set this to your resource group name
 
 permissions:
   contents: read
+  id-token: write # This is required for Azure login with OIDC
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python version
         uses: actions/setup-python@v4
@@ -61,14 +63,15 @@ jobs:
         run: zip -r release.zip . -x "venv/*" ".git/*" ".github/*"
             
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: release.zip
 
   deploy:
     permissions:
-      contents: none
+      contents: read
+      id-token: write # This is required for Azure login with OIDC
     runs-on: ubuntu-latest
     needs: build
     environment:
@@ -77,17 +80,66 @@ jobs:
 
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: python-app
 
       - name: Unzip artifact for deployment
         run: unzip release.zip
 
+      # Try the OIDC login first (from auto-generated workflow)
+      - name: Login to Azure (OIDC)
+        if: ${{ env.AZURE_CLIENT_ID != '' }}
+        uses: azure/login@v2
+        continue-on-error: true
+        id: azure-login-oidc
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_2B6151E1D48D4EA18D7E8D287ABE3BE8 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_81FE11FAAC7F46A7B73D9787863DE092 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_699258C20171445DA00ED4B69CE1487E }}
+
+      # Fall back to service principal creds if OIDC fails
+      - name: Login to Azure (Service Principal)
+        if: steps.azure-login-oidc.outcome != 'success' && env.AZURE_CREDENTIALS != ''
+        uses: azure/login@v1
+        continue-on-error: true
+        id: azure-login-sp
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Verify Azure Login
+        shell: bash
+        run: |
+          if ! az account show > /dev/null; then
+            echo "::error::Azure login failed. Please ensure either AZURE_CREDENTIALS or Azure OIDC credentials are set correctly."
+            exit 1
+          fi
+
+      - name: Stop App Service
+        continue-on-error: true
+        run: |
+          echo "Stopping App Service to clear deployment locks..."
+          az webapp stop --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+          echo "Waiting for app to stop..."
+          sleep 15
+
+      - name: Clean Deployment
+        continue-on-error: true
+        run: |
+          echo "Restarting SCM site to clear deployment locks..."
+          az webapp restart --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --slot-name SCM || true
+          sleep 10
+
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          startup-command: 'sh startup.sh' 
+          startup-command: 'sh startup.sh'
+
+      - name: Start App Service
+        continue-on-error: true
+        run: |
+          echo "Starting App Service..."
+          az webapp start --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+          echo "Deployment complete!" 

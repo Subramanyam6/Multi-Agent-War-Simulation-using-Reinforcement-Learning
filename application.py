@@ -10,7 +10,7 @@ logging.basicConfig(
 logger = logging.getLogger('application')
 
 # Create a Flask app
-application = Flask(__name__)
+    application = Flask(__name__)
 
 # Add health check endpoints
 @application.route('/health')
