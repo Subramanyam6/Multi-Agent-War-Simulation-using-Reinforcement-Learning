@@ -5,13 +5,10 @@
 #
 # To configure this workflow:
 #
-# 1. Download the Publish Profile for your Azure Web App. You can download this file from the Overview page of your Web App in the Azure Portal.
-#    For more information: https://docs.microsoft.com/en-us/azure/app-service/deploy-github-actions?tabs=applevel#generate-deployment-credentials
+# 1. Create a secret in your repository named AZURE_CREDENTIALS with Azure service principal details.
+#    For more information: https://github.com/Azure/login#configure-a-service-principal-with-a-secret
 #
-# 2. Create a secret in your repository named AZURE_WEBAPP_PUBLISH_PROFILE, paste the publish profile contents as the value of the secret.
-#    For instructions on obtaining the publish profile see: https://docs.microsoft.com/azure/app-service/deploy-github-actions#configure-the-github-secret
-#
-# 3. Change the value for the AZURE_WEBAPP_NAME. Optionally, change the PYTHON_VERSION environment variable below.
+# 2. Change the value for the AZURE_WEBAPP_NAME. Optionally, change the PYTHON_VERSION environment variable below.
 #
 # For more information on GitHub Actions for Azure: https://github.com/Azure/Actions
 # For more information on the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
@@ -26,6 +23,7 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: multi-agent-rl-war  # set this to your application's name
+  AZURE_RESOURCE_GROUP: rg-multi-agent-rl-war # set this to your resource group name
   PYTHON_VERSION: '3.9'                   # set this to the Python version to use
 
 permissions:
@@ -83,11 +81,24 @@ jobs:
 
       - name: Unzip artifact for deployment
         run: unzip release.zip
+        
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: Configure Azure Web App
+        run: |
+          az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --linux-fx-version "PYTHON|3.9"
+          az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --startup-file "startup.sh"
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          startup-command: 'sh startup.sh' 
+          package: .
+          
+      - name: Restart web app after deployment
+        run: |
+          az webapp restart --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 
