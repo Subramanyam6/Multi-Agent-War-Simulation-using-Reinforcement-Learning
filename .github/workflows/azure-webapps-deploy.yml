@@ -87,6 +87,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           
+      - name: Clear deployment locks
+        run: |
+          echo "Stopping the web app to clear deployment locks"
+          az webapp stop --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+          echo "Waiting for locks to clear"
+          sleep 10
+          
       - name: Configure Azure Web App
         run: |
           az webapp config set --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --linux-fx-version "PYTHON|3.9"
