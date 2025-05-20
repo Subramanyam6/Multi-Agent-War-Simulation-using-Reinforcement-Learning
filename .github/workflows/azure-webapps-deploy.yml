@@ -47,12 +47,46 @@ jobs:
         run: |
           az webapp stop --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
 
+      - name: Check app settings before removal
+        run: |
+          echo "Current app settings:"
+          az webapp config appsettings list --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[?name=='WEBSITE_RUN_FROM_PACKAGE']"
+
       - name: Remove run-from-package setting
         run: |
           az webapp config appsettings delete \
             --name ${{ env.AZURE_WEBAPP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --setting-names WEBSITE_RUN_FROM_PACKAGE
+          # Adding a delay to ensure setting is fully removed
+          echo "Waiting for setting removal to propagate..."
+          sleep 15
+
+      - name: Verify setting removal
+        run: |
+          echo "Verifying WEBSITE_RUN_FROM_PACKAGE has been removed:"
+          az webapp config appsettings list --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[?name=='WEBSITE_RUN_FROM_PACKAGE']"
+
+      - name: Reset deployment status (optional - use if needed)
+        run: |
+          # This is a more aggressive approach if normal methods fail
+          echo "Resetting SCM site and clearing deployment cache"
+          publishingUsername=$(az webapp deployment list-publishing-credentials --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_WEBAPP_NAME }} --query publishingUserName --output tsv)
+          publishingPassword=$(az webapp deployment list-publishing-credentials --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_WEBAPP_NAME }} --query publishingPassword --output tsv)
+          
+          # Only continue if we got the credentials
+          if [[ ! -z "$publishingUsername" && ! -z "$publishingPassword" ]]; then
+            appHostname="${{ env.AZURE_WEBAPP_NAME }}-bga8hpeka0dsbzge.scm.canadacentral-01.azurewebsites.net"
+            echo "Using hostname: $appHostname"
+            
+            # This endpoint resets the SCM site
+            curl -X POST "https://${publishingUsername}:${publishingPassword}@${appHostname}/api/diagnostics/restart" || echo "SCM site restart requested"
+            
+            # Give SCM site time to restart
+            sleep 15
+          else
+            echo "Could not get publishing credentials, skipping SCM site reset"
+          fi
 
       - name: Deploy via Azure CLI ZIP Deploy
         run: |
