@@ -1,5 +1,5 @@
 # This workflow builds and deploys a Python Flask app to Azure App Service using a Service Principal and Azure CLI zip deploy.
-# It stops using the built-in azure/webapps-deploy action to avoid 409 lock conflicts.
+# It removes the WEBSITE_RUN_FROM_PACKAGE setting and stops using the built-in azure/webapps-deploy action to avoid 409 lock conflicts.
 
 name: Build and deploy Python app to Azure Web App
 
@@ -46,6 +46,13 @@ jobs:
       - name: Stop App Service
         run: |
           az webapp stop --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+
+      - name: Remove run-from-package setting
+        run: |
+          az webapp config appsettings delete \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --setting-names WEBSITE_RUN_FROM_PACKAGE
 
       - name: Deploy via Azure CLI ZIP Deploy
         run: |
