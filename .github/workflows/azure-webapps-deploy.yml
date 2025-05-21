@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: multi-agent-rl-war    # your Azure Web App name
+  AZURE_WEBAPP_NAME: multi-agent-rl-war-py    # your Azure Web App name
   AZURE_RESOURCE_GROUP: rg-multi-agent-rl-war  # your Resource Group name
-  PYTHON_VERSION: '3.9'                    # Python version
+  PYTHON_VERSION: '3.11'                    # Python version
 
 permissions:
   contents: read
