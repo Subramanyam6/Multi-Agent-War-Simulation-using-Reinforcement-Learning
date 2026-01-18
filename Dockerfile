@@ -1,73 +1,38 @@
-# Multi-stage build for smaller image size
-FROM python:3.9-slim as builder
-
-# Set working directory
-WORKDIR /app
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first for better caching
-COPY requirements.txt .
-
-# Create virtual environment and install dependencies
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Final stage
+# Use Python 3.9 slim
 FROM python:3.9-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
+# Copy and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY CodeBase ./CodeBase
-COPY static ./static
-COPY templates ./templates
-COPY app.py .
-COPY web_visualizer.py .
-COPY LICENSE .
+COPY . .
 
-# Set environment variables
-ENV PATH="/opt/venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1 \
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=10000 \
+    PYTHONPATH=/app \
     MPLCONFIGDIR=/tmp/matplotlib
 
 # Create matplotlib cache directory
 RUN mkdir -p /tmp/matplotlib && chmod 777 /tmp/matplotlib
 
-# Expose port (Render.com uses PORT env variable)
+# Expose port (Render sets PORT env var)
 EXPOSE 10000
 
-# Use gunicorn with optimized settings for Render.com
-CMD gunicorn --bind 0.0.0.0:$PORT \
+# Run with gunicorn - simpler config
+CMD gunicorn --bind 0.0.0.0:${PORT:-10000} \
     --workers 2 \
-    --threads 2 \
-    --timeout 300 \
-    --worker-class gthread \
-    --worker-tmp-dir /dev/shm \
+    --timeout 120 \
     --access-logfile - \
     --error-logfile - \
-    --log-level info \
     app:app
