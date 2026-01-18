@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: free
     repo: https://github.com/Subramanyam6/Multi-Agent-War-Simulation-using-Reinforcement-Learning
-    branch: main
+    branch: Migrating-from-Azure-to-Render.com
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
