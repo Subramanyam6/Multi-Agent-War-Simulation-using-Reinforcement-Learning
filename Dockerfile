@@ -1,4 +1,4 @@
-# Use Python 3.9 slim
+# Hugging Face Spaces Dockerfile
 FROM python:3.9-slim
 
 WORKDIR /app
@@ -21,18 +21,20 @@ COPY . .
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
-    MPLCONFIGDIR=/tmp/matplotlib
+    MPLCONFIGDIR=/tmp/matplotlib \
+    PORT=7860
 
 # Create matplotlib cache directory
 RUN mkdir -p /tmp/matplotlib && chmod 777 /tmp/matplotlib
 
-# Expose port (Render sets PORT env var)
-EXPOSE 10000
+# Expose port 7860 (HF Spaces default)
+EXPOSE 7860
 
-# Run with gunicorn - simpler config
-CMD gunicorn --bind 0.0.0.0:${PORT:-10000} \
-    --workers 2 \
-    --timeout 120 \
+# Run with single worker to save memory
+CMD gunicorn --bind 0.0.0.0:7860 \
+    --workers 1 \
+    --threads 1 \
+    --timeout 300 \
     --access-logfile - \
     --error-logfile - \
     app:app
