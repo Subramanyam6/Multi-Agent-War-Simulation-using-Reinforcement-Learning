@@ -1,25 +1,73 @@
-# Use a slim Python base
-FROM python:3.9-slim-buster
+# Multi-stage build for smaller image size
+FROM python:3.9-slim as builder
 
+# Set working directory
 WORKDIR /app
 
-# Install all Python deps in one step
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
 COPY requirements.txt .
-RUN pip install --upgrade pip \
- && pip install --no-cache-dir -r requirements.txt \
- && pip cache purge
 
-# Copy your application code
-COPY . .
+# Create virtual environment and install dependencies
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Make PORT available as an environment variable
-ENV PORT=8000
-ENV PYTHONUNBUFFERED=1
+# Final stage
+FROM python:3.9-slim
 
-# Make sure gunicorn can find our app
-ENV PYTHONPATH=/app
+# Set working directory
+WORKDIR /app
 
-# Declare the port & start the app with more explicit configuration
-EXPOSE 8000
-CMD ["gunicorn", "--bind=0.0.0.0:8000", "--timeout=120", "--workers=2", "--threads=2", "--log-level=info", "app_standalone:application"]
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libfontconfig1 \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Copy application code
+COPY CodeBase ./CodeBase
+COPY static ./static
+COPY templates ./templates
+COPY app.py .
+COPY web_visualizer.py .
+COPY LICENSE .
+
+# Set environment variables
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=10000 \
+    MPLCONFIGDIR=/tmp/matplotlib
+
+# Create matplotlib cache directory
+RUN mkdir -p /tmp/matplotlib && chmod 777 /tmp/matplotlib
+
+# Expose port (Render.com uses PORT env variable)
+EXPOSE 10000
+
+# Use gunicorn with optimized settings for Render.com
+CMD gunicorn --bind 0.0.0.0:$PORT \
+    --workers 2 \
+    --threads 2 \
+    --timeout 300 \
+    --worker-class gthread \
+    --worker-tmp-dir /dev/shm \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    app:app

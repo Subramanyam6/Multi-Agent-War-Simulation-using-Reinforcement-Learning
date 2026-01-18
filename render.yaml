@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: multi-agent-war-simulation
+    runtime: docker
+    plan: free
+    repo: https://github.com/Subramanyam6/Multi-Agent-War-Simulation-using-Reinforcement-Learning
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: MPLCONFIGDIR
+        value: /tmp/matplotlib
+    autoDeploy: true

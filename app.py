@@ -26,6 +26,11 @@ def index():
     # Otherwise render the full template
     return render_template('index.html')
 
+@app.route('/health')
+def health():
+    """Health check endpoint for Render.com"""
+    return "OK", 200
+
 @app.route('/run_simulation', methods=['POST'])
 def run_simulation():
     """Run a simulation with the given parameters"""
